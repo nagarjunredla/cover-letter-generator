@@ -6,8 +6,8 @@
  * Copyright 2013 Mikko Ohtamaa, http://opensourcehacker.com
  */
 
-// Row number from where to fill in the data (2 = first row because 1 is the header row)
-var COMPANY_ROW = 2; // <=============================== Adjust this
+// Assumes Company name in column to for filename
+var COMPANY_COLUMN = 2; // <=============================== Adjust this
 
 // Google Doc id from the document template (Get ids from the URL)
 var SOURCE_TEMPLATE = ""; // <========================== Adjust this
@@ -82,6 +82,19 @@ function fillData() {
 
   var data = SpreadsheetApp.openById(SPREADSHEET);
 
+  // Fetch variable names
+  // they are column names in the spreadsheet
+  var sheet = data.getSheets()[0];
+  var columns = getRowAsArray(sheet, 1);
+
+  if(mode == 1) {
+    var COMPANY_ROW = sheet.getLastRow();
+  }
+  
+  else {
+    var COMPANY_ROW = data.getActiveCell().getRow();
+  }
+
   // XXX: Cannot be accessed when run in the script editor?
   // WHYYYYYYYYY? Asking one number, too complex?
   //var COMPANY_ROW = Browser.inputBox("Enter customer number in the spreadsheet", Browser.Buttons.OK_CANCEL);
@@ -89,18 +102,13 @@ function fillData() {
       return; 
   }
 
-  // Fetch variable names
-  // they are column names in the spreadsheet
-  var sheet = data.getSheets()[0];
-  var columns = getRowAsArray(sheet, 1);
-
   Logger.log("Processing columns:" + columns);
 
   var customerData = getRowAsArray(sheet, COMPANY_ROW);  
   Logger.log("Processing data:" + customerData);
 
   // Assume third column holds the company name
-  var companyName = customerData[2];
+  var companyName = customerData[COMPANY_COLUMN];
 
   var target = createDuplicateDocument(SOURCE_TEMPLATE, companyName + " Cover Letter");
 
@@ -119,4 +127,31 @@ function fillData() {
       
     replaceParagraph(target, key, value);
   }
+
+  showDialog(target.getUrl());
+}
+
+function fillDataLatest() {
+  fillData(1);
+}
+
+function fillDataSelected() {
+  fillData(0);
+}
+
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  // Or DocumentApp or FormApp.
+  ui.createMenu('Generate Cover Letter')
+      .addItem('Latest Row', 'fillDataLatest')
+      .addItem('Selected Row', 'fillDataSelected')
+      .addToUi();
+}
+
+function showDialog(url) {
+  var html = HtmlService.createHtmlOutput('<html><body><a href="' + url + '" target="_blank" onclick="google.script.host.close()">Link to Cover Letter</a></body></html>')
+      .setWidth(150)
+      .setHeight(30);
+  SpreadsheetApp.getUi()
+      .showModalDialog(html, 'Cover Letter Created');
 }
